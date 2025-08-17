@@ -5,7 +5,10 @@ import mongoose from 'mongoose';
 const connectDB = async () => {
     try {
         // Ensure the MONGO_URI environment variable is set
-        await mongoose.connect(process.env.MONGO_URI);
+        await mongoose.connect(process.env.MONGO_URI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+        });
         console.log('MongoDB connected successfully');
     } catch (error) {
         // Log the error message if connection fails

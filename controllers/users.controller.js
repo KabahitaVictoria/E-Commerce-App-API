@@ -1,4 +1,6 @@
 import UserSchema from '../models/user.model.js';
+import mongoose from 'mongoose';
+import bcrypt from 'bcrypt';
 
 // function for registering a new user
 const registerUser = async (req, res) => {
@@ -25,6 +27,16 @@ const loginUser = async (req, res) => {
     }
 }
 
+// get all users
+const getAllUsers = async (req, res) => {
+    try {
+        const users = await UserSchema.find({});
+        res.status(200).json({ success: true, users });
+    } catch (error) {
+        res.status(500).json({ success: false, message: `Error fetching users: ${error.message}` });
+    }
+}
+
 // function for viewing a user's profile
 const getUserProfile = async (req, res) => {
     try {
@@ -40,12 +52,43 @@ const getUserProfile = async (req, res) => {
 
 // function for updating a user's profile
 const updateUserProfile = async (req, res) => {
-    const user = await UserSchema.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!user) {
-        return res.status(404).json({ success: false, message: 'User not found.' });
+    try {
+      const { id } = req.params;
+  
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({ success: false, message: "Invalid user ID." });
+      }
+  
+      const user = await UserSchema.findById(id);
+      if (!user) return res.status(404).json({ success: false, message: "User not found." });
+  
+      // Safety check for req.body
+      if (!req.body || Object.keys(req.body).length === 0) {
+        return res.status(400).json({ success: false, message: "No data provided to update." });
+      }
+  
+      Object.keys(req.body).forEach((key) => {
+        user[key] = req.body[key];
+      });
+  
+      if (req.body.password) {
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(req.body.password, salt);
+      }
+  
+      await user.save();
+  
+      res.status(200).json({
+        success: true,
+        message: "User profile updated successfully.",
+        user,
+      });
+    } catch (err) {
+      console.error("Update failed:", err);
+      res.status(500).json({ success: false, message: "Server error", error: err.message });
     }
-    res.status(200).json({ success: true, message: 'User profile updated successfully.', user });
-}
+  };
+  
 
 // function for changing a user's password
 const changePassword = async (req, res) => {
@@ -74,6 +117,7 @@ const deleteUser = async (req, res) => {
 export {
     registerUser,
     loginUser,
+    getAllUsers,
     getUserProfile,
     updateUserProfile,
     changePassword,
